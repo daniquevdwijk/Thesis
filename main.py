@@ -2,14 +2,17 @@
 # File name: main.py
 # Author: Danique van der Wijk
 # Student number: s3989771
-# Last updated: 15 December 2024
+# Last updated: 23 December 2024
 # Description: The main file of the thesis
 #
 
 import os
 import csv
 from preprocessing import extract_text, parse_xml
+import adjdel
 import xml.etree.ElementTree as ET
+import pandas as pd
+#import spacy
 
 
 def process_pages(input_file, output_file):
@@ -40,23 +43,39 @@ def inspect_xml_structure(input_file):
     root = tree.getroot()
 
     print("Root tag:", root.tag)
-    print("Child tags of root:")
+    #print("Child tags of root:")
     #for child in root:
         #print(" -", child.tag)
 
 
+def text_to_bitcode(input_text):
+    """ """
+    return ''.join(format(ord(char), '08b') for char in input_text)
+
+
 def main():
     """ """
-    input_file = os.path.join('data', 'nlwiki-20241201-pages-articles1.xml-p1p134538')
+    input_file = os.path.join('data', 'nlwiki-20241220-pages-articles-multistream1.xml-p1p134538')
     output_file = 'output.csv'
     
     # check if the input file is present
-    if not os.path.exists(input_file):
-        print(f"Inputfile not found: {input_file}")
-    else:
+    #if not os.path.exists(input_file):
+        #print(f"Inputfile not found: {input_file}")
+    #else:
         #inspect_xml_structure(input_file)
-        process_pages(input_file, output_file)
+        #process_pages(input_file, output_file)
 
+    # Reads the dataset
+    df = pd.read_csv("output.csv")
+    # Selects second entry of the content column
+    second_entry = df.loc[1, "Content"]
+
+    input_text = "test"
+    bitcode = text_to_bitcode(input_text)
+    print("Bitcode:", bitcode)
+
+    modified_text = adjdel.bitcode_to_text(second_entry, bitcode)
+    print(modified_text)
 
 
 if __name__ == "__main__":
