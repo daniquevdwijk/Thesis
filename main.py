@@ -12,7 +12,11 @@ from preprocessing import extract_text, parse_xml
 import adjdel
 import xml.etree.ElementTree as ET
 import pandas as pd
-#import spacy
+import nltk
+
+#Download NLTK tokenizer (only needed 1 time)
+#nltk.download('punkt')
+#nltk.download('punkt_tab')
 
 
 def process_pages(input_file, output_file):
@@ -37,6 +41,23 @@ def process_pages(input_file, output_file):
     print(f"The processed data is saved in {output_file}")
 
 
+def split_into_sentences(input_file, output_file):
+    """ Splits the content column of the CSV into sentences. """
+    df = pd.read_csv(input_file)
+
+    all_sentences = []
+    for _, row in df.iterrows():
+        content = row['Content']
+        sentences = nltk.tokenize.sent_tokenize(content, language='dutch')
+        for sentence in sentences:
+            all_sentences.append({'Title': row['Title'], 'Sentence': sentence})
+    
+    # Save the sentences into a CSV file
+    sentences_df = pd.DataFrame(all_sentences)
+    sentences_df.to_csv(output_file, index=False)
+    print(f"Sentences saved in {output_file}")
+
+
 def inspect_xml_structure(input_file):
     """ """
     tree = ET.parse(input_file)
@@ -57,26 +78,28 @@ def main():
     """ """
     input_file = os.path.join('data', 'nlwiki-20241220-pages-articles-multistream1.xml-p1p134538')
     output_file = 'output.csv'
-    
-    # check if the input file is present
-    #if not os.path.exists(input_file):
-        #print(f"Inputfile not found: {input_file}")
-    #else:
-        #inspect_xml_structure(input_file)
-        #process_pages(input_file, output_file)
+    sentence_file = 'sentences.csv'
+    modified_file = 'modified_sentences.csv'
 
-    # Reads the dataset
-    df = pd.read_csv("output.csv")
-    # Selects second entry of the content column
-    second_entry = df.loc[1, "Content"]
+    # Check if the original XML file is already converted into a csv file
+    if not os.path.exists(output_file):
+        process_pages(input_file, output_file)
+        print("processing of pages done")
+    
+    # Split the sentences if that has not been done yet
+    if not os.path.exists(sentence_file):
+        split_into_sentences(output_file, sentence_file)
+        print("Sentence splitting done")
 
     input_text = "test"
     bitcode = text_to_bitcode(input_text)
-    print("Bitcode:", bitcode)
+    print(bitcode)
 
-    modified_text = adjdel.bitcode_to_text(second_entry, bitcode)
-    print(modified_text)
-
+    # Apply adjective deletion, if that has not been done yet
+    #if not os.path.exists(modified_file):
+    adjdel.bitcode_to_text(sentence_file, bitcode, modified_file, limit=100)
+    print("Adjective deletion done")
+        
 
 if __name__ == "__main__":
     main()
