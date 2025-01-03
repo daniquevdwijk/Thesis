@@ -10,6 +10,7 @@ import os
 import csv
 from preprocessing import extract_text, parse_xml
 import adjdel
+from svm import train_svm
 import xml.etree.ElementTree as ET
 import pandas as pd
 import nltk
@@ -99,6 +100,11 @@ def main():
     #if not os.path.exists(modified_file):
     adjdel.bitcode_to_text(sentence_file, bitcode, modified_file, limit=100)
     print("Adjective deletion done")
+
+    # die dingen moet ik nog labels geven voordat ik de SVM kan doen
+
+    #model, accuracy = train_svm(modified_file)
+    #print(f"SVM model is trained with an accuracy of {accuracy * 100:.2f}%")
         
 
 if __name__ == "__main__":
