@@ -2,7 +2,7 @@
 # File name: adjdel.py
 # Author: Danique van der Wijk
 # Student number: s3989771
-# Last updated: 30 December 2024
+# Last updated: 8 January 2025
 # Description: The file where the adjective deletion takes place
 #
 
@@ -14,10 +14,11 @@ import pandas as pd
 nlp = spacy.load("nl_core_news_sm")
 
 
-def bitcode_to_text(input_csv, bitcode, output_file, limit=100):
+def bitcode_to_text(input_csv, bitcode, output_file, limit=512):
     """ """
     # Load the input CSV
     df = pd.read_csv(input_csv)
+    df = df.astype(str)
 
     # Check if there is a 'Sentence' column
     if 'Sentence' not in df.columns:
