@@ -8,60 +8,80 @@
 
 import spacy
 import pandas as pd
+from tqdm import tqdm
 
 
 # Loads the Dutch language model of spaCy
 nlp = spacy.load("nl_core_news_sm")
 
+def count_adjectives(texts, nlp):
+    """ """
+    counts = []
+    for doc in tqdm(nlp.pipe(texts, batch_size=100), total=len(texts), desc="Processing texts"):
+        adjective_count = sum(1 for token in doc if token.pos_ == "ADJ")
+        counts.append(adjective_count)
+    return counts
 
-def bitcode_to_text(input_csv, bitcode, output_file, limit=512):
+
+def adjective_labeling(input_csv, output_csv):
     """ """
     # Load the input CSV
     df = pd.read_csv(input_csv)
     df = df.astype(str)
 
-    # Check if there is a 'Sentence' column
-    if 'Sentence' not in df.columns:
-        raise ValueError("Input CSV must contain a 'Sentence' column.")
+    # Check if there is a 'Content' column
+    if 'Content' not in df.columns:
+        raise ValueError("Input CSV must contain a 'Content' column.")
     
-    # make a list of the sentences
-    df_limited = df.head(limit)
-    sentences = df_limited['Sentence'].tolist()
-
-    modified_sentences = []
-    bit_index = 0 # keeps which bit from the bitcode is used
-
-    for sentence in sentences:
-        # parse the sentence with spaCy
-        doc = nlp(sentence)
-        # checks if there are adjectives in the sentence
-        adjectives = [token for token in doc if token.pos_ == "ADJ"]
-
-        if adjectives:
-            # only applies if there are adjectives
-            if bit_index < len(bitcode):
-                bit = bitcode[bit_index] # get the current bit
-                bit_index += 1 
-
-                if bit == "1":
-                    # Keep adjectives in sentence
-                    modified_sentences.append(sentence)
-                else:
-                    # Delete adjectives
-                    cleaned_sentence = " ".join([token.text for token in doc if token.pos_ != "ADJ"])
-                    modified_sentences.append(cleaned_sentence)
-            else:
-                # if the bitcode is empty, add original sentence
-                modified_sentences.append(sentence)
-        else:
-            # add sentences without adjectives unchanged
-            modified_sentences.append(sentence)
+    # Limit the number of pages to 1000
+    df = df.head(1000)
     
-    # Create DataFrame with original and modified sentences
-    df_limited.loc[:, 'Modified Sentence'] = modified_sentences
+    # Count adjectives in every page
+    df['Adjective_Count'] = count_adjectives(df['Content'], nlp)
+    
+    # Calculate the total number of adjectives
+    total_adjectives = df['Adjective_Count'].sum()
+    print(f"Total number of adjectives: {total_adjectives}")
 
-    # Save the Dataframe to a CSV file
-    df_limited.to_csv(output_file, index=False)
-    print(f"Modified sentences saved to '{output_file}'")
+    # Save the DataFrame to a CSV file
+    df.to_csv(output_csv, index=False)
+    print(f"Adjectives saved to '{output_csv}'")
 
     return
+
+def find_matching_count(df, bitcode_length):
+    """ Returns text with the same amount of adjectives as the length of the bitcode."""
+    df = pd.read_csv(df)
+    matching_texts = []
+    for index, row in df.iterrows():
+        if row['Adjective_Count'] == bitcode_length:
+            matching_texts.append(row['Content'])
+    if not matching_texts:
+        print("No texts found with the same amount of adjectives as the length of the bitcode.")
+    return matching_texts
+
+
+def bitcode_to_text(text, bitcode):
+    """ """
+    doc = nlp(text)
+    new_text = []
+    bit_index = 0
+
+    for token in doc:
+        if token.pos_ == "ADJ": # Only the adjectives are to be manipulated
+            if bit_index < len(bitcode): # Check if there is a bit left
+                if bitcode[bit_index] == "1":
+                    new_text.append(token.text) # Add the adjective to the new text
+                # else: don't add the adjective to the new text
+                bit_index += 1 # Go to the next bit
+            else:
+                # If there are no bits left, add the adjective to the new text
+                continue
+        else:
+            new_text.append(token.text) # Other tokens are added to the new text
+    
+    # Join the tokens to form a new text
+    modified_text = " ".join(new_text)
+    return modified_text
+
+    
