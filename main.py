@@ -8,11 +8,11 @@
 
 import os
 import csv
+from transformers import pipeline
 from preprocessing import extract_text, parse_xml
-from adjdel import bitcode_to_text, adjective_labeling, find_matching_count
-from labelling import label_sentences
-from evaluation import train_svm
-from evaluation import calculate_bleu_score
+from adjdel import bitcode_to_text_spacy, bitcode_to_text_stanza, adjective_labeling_spacy, adjective_labeling_stanza, find_matching_count, generate_bitcode_spacy, generate_bitcode_stanza
+#from labelling import label_sentences
+from evaluation import train_svm, calculate_bleu_score
 import xml.etree.ElementTree as ET
 import pandas as pd
 import nltk
@@ -84,70 +84,84 @@ def inspect_xml_structure(input_file):
 
 
 def text_to_bitcode(input_text):
-    """ """
+    """ Convert input text to binary bitcode."""
     return ''.join(format(ord(char), '08b') for char in input_text)
+
+def bitcode_transform(bitcode):
+    """ Convert binary bitcode to text. """
+    # Split the bitcode into chunks of 8 bits (1 byte)
+    byte_chunks = [bitcode[i:i + 8] for i in range(0, len(bitcode), 8)]
+
+    # Convert each 8-bit chunk to a character
+    text = ''.join(chr(int(byte, 2)) for byte in byte_chunks)
+
+    return text
+
+
+def debug_bitcode(original_bitcode, reconstructed_bitcode):
+    """" """
+    for i, (original_bit, reconstructed_bit) in enumerate(zip(original_bitcode, reconstructed_bitcode)):
+        if original_bit != reconstructed_bit:
+            print(f"Bit mismatch at position {i}: Original = {original_bit}, Reconstructed = {reconstructed_bit}")
+    
+    #assert original_bitcode == reconstructed_bitcode, "The original bitcode and the reconstructed bitcode are not the same."
 
 
 def main():
     """ """
     input_file = os.path.join('data', 'nlwiki-20241220-pages-articles-multistream1.xml-p1p134538')
     output_file = 'output.csv'
-    count_file = 'count.csv'
-    #sentence_file = 'sentences.csv'
-    #modified_file = 'modified_sentences.csv'
-    #labeled_file = 'labeled_sentences.csv'
+    count_file_spacy = 'count_spacy.csv'
+    count_file_stanza = 'count_stanza.csv'
 
-    input_text = "Dit is een testzin."
+    input_text = "Test Test Test"
+    print(f"Original text: {input_text}")
     bitcode = text_to_bitcode(input_text)
-    print(bitcode)
-    print(f"The lenght of the bitcode is: {len(bitcode)} bits")
+    print(f"Original bitcode: {bitcode}")
+    #print(f"The lenght of the bitcode is: {len(bitcode)} bits")
 
     # Check if the original XML file is already converted into a csv file
     if not os.path.exists(output_file):
         process_pages(input_file, output_file)
         print("processing of pages done")
 
-    if not os.path.exists(count_file):
-        adjective_labeling(output_file, count_file)
-        print("Adjective labeling done")
-
-    cover_text = find_matching_count(count_file, len(bitcode))
-    #if cover_text:
-        #print("Matching text found")
-        #print(cover_text)
-   # else:
-        #print("No matching text found")
+    if not os.path.exists(count_file_spacy):
+        adjective_labeling_spacy(output_file, count_file_spacy)
+        print("Adjective labeling done (spacy)")
     
-    stego_text = bitcode_to_text(cover_text[0], bitcode)
-    print(stego_text)
+    if not os.path.exists(count_file_stanza):
+        adjective_labeling_stanza(output_file, count_file_stanza)
+        print("Adjective labeling done (stanza)")
 
-    # Adjective deletion
-        # Kijken of er een tekst is met hetzelfde aantal adjectieven als de lengte van de bitcode
-        # Zo ja, dan die tekst gebruiken
-        # Zo nee, dan de tekst met het aantal van het dichtstbijzijnde aantal adjectieven gebruiken, maar wel meer is dan de lengte van de bitcode
-
-    # 
-
+    cover_text = find_matching_count(count_file_spacy, len(bitcode))
+    if cover_text:
+        print("Matching text found")
+        print(cover_text)
+    else:
+        print("No matching text found")
     
-    # Split the sentences if that has not been done yet
-    #if not os.path.exists(sentence_file):
-        #split_into_sentences(output_file, sentence_file)
-        #print("Sentence splitting done")
+    stego_text = bitcode_to_text_spacy(cover_text[0], bitcode)
+    #stego_text = bitcode_to_text_stanza(cover_text[0], bitcode)
+    print(f"This is the stego text: {stego_text}")
 
-    # Apply adjective deletion, if that has not been done yet
-    #if not os.path.exists(modified_file):
-       # adjdel.bitcode_to_text(sentence_file, bitcode, modified_file, limit=512)
-        #print("Adjective deletion done")
+    cover_bitcode = generate_bitcode_spacy(cover_text[0], stego_text)
+    #cover_bitcode = generate_bitcode_stanza(cover_text[0], stego_text)
+    print(f"This is the bitcode decoded from the stego text: {cover_bitcode}")
+    #assert bitcode == cover_bitcode, "The original bitcode and the stego bitcode are not the same."
 
-    #if not os.path.exists(labeled_file):
-        #label_sentences(modified_file, labeled_file)
+    debug_bitcode(bitcode, cover_bitcode)
+    covered_text = bitcode_transform(cover_bitcode)
+    print(f"This is the hidden text: {covered_text}")
+
+    #assert input_text == covered_text, "The original text and the hidden text are not the same."
+
 
     # die dingen moet ik nog labels geven voordat ik de SVM kan doen
 
     #model, accuracy = train_svm(labeled_file)
     #print(f"SVM model is trained with an accuracy of {accuracy * 100:.2f}%")
 
-    #calculate_bleu_score(labeled_file)
+    bleu_score = calculate_bleu_score(stego_text, cover_text[0])
     
 
 if __name__ == "__main__":

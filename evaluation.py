@@ -44,29 +44,27 @@ def train_svm(input_file):
     
     return model, accuracy
 
-def calculate_bleu_score(input_file):
+def calculate_bleu_score(stego_text, cover_text):
     """ """
-    data = pd.read_csv(input_file)
-    print(f'Columns: {data.columns.tolist()}')
+    # Split the input texts into sentences
+    stego_sentences = stego_text.split(".")
+    cover_sentences = cover_text.split(".")
 
-    if 'Sentence' not in data.columns or 'Modified Sentence' not in data.columns:
-        raise ValueError("Input CSV must contain 'Sentence' and 'Modified Sentence' columns.")
+    # Check if the number of sentences is the same
+    if len(stego_sentences) != len(cover_sentences):
+        raise ValueError("The number of sentences in the stego text and cover text must be the same.")
 
     bleu_scores = []
-    for _, row in data.iterrows():
-        sentence = row['Sentence']
-        modified_sentence = row['Modified Sentence']
 
-        # Calculate BLEU score
-        reference = sentence.split()
-        candidate = modified_sentence.split()
+    # Calculate BLEU score for each sentence
+    for cover_sentence, stego_sentence in zip(cover_sentences, stego_sentences):
+        reference = cover_sentence.split()
+        candidate = stego_sentence.split()
         score = sentence_bleu([reference], candidate)
         bleu_scores.append(score)
-
-    # Add BLEU scores to a DataFrame
-    data['BLEU Score'] = bleu_scores
-
+    
     # Calculate average BLEU score
     avg_bleu_score = sum(bleu_scores) / len(bleu_scores)
     print(f"Average BLEU score: {avg_bleu_score}")
 
+    return avg_bleu_score

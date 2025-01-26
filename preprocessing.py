@@ -8,6 +8,7 @@
 
 import re
 import xml.etree.ElementTree as ET
+import html
 
 def extract_text(page):
     """ """
@@ -32,7 +33,7 @@ def extract_text(page):
     
     # Cleans text
     raw_text = text_element.text
-    cleaned_text = clean_wikitext(raw_text)
+    cleaned_text = clean_wikitext(raw_text).strip()
 
     return cleaned_text
 
@@ -84,6 +85,9 @@ def clean_wikitext(text):
 
     # Concatenate clean text
     cleaned_text = ". ".join(sentences).strip() + "."
+    cleaned_text = html.unescape(cleaned_text).replace('\xa0', ' ').strip()
+    cleaned_text = " ".join(cleaned_text.split())
+
 
     return cleaned_text
 
