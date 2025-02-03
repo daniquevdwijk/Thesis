@@ -2,7 +2,7 @@
 
 ## Needed packages
 
-To use this code, you need to execute the follwing command in your terminal:
+To use this code, you need to execute the following command in your terminal:
 
 ```bash
 pip install nltk transformers torch spacy stanza pandas tqdm python-Levenshtein lxml
