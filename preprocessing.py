@@ -2,7 +2,7 @@
 # File name: preprocessing.py
 # Author: Danique van der Wijk
 # Student number: s3989771
-# Last updated: 15 December 2024
+# Last updated: 3 February 2025
 # Description: The file where the preprocessing of the Wikipedia dataset takes place
 #
 
@@ -11,7 +11,16 @@ import xml.etree.ElementTree as ET
 import html
 
 def extract_text(page):
-    """ """
+    """
+    Extracts and cleans the text content from a given XML page element.
+    Args:
+        page (Element): An XML element representing a page, which contains
+                        <revision> and <text> tags in the MediaWiki XML format.
+    Returns:
+        str: The cleaned text content extracted from the <text> tag within the
+             <revision> tag. Returns an empty string if the <revision> or <text>
+             tags are not found, or if the <text> tag is empty.
+    """
     namespace = {"ns": "http://www.mediawiki.org/xml/export-0.11/"}
 
     # Find the <revision>-tag
@@ -39,7 +48,29 @@ def extract_text(page):
 
 
 def clean_wikitext(text):
-    """ """
+    """
+    Cleans and processes wikitext by removing or transforming various elements.
+    Args:
+        text (str): The wikitext to be cleaned.
+    Returns:
+        str: The cleaned and processed text.
+    The function performs the following operations:
+    - Removes templates enclosed in {{...}}.
+    - Keeps the content of <ref>...</ref> tags but removes the tags themselves.
+    - Removes self-closing <ref.../> tags.
+    - Removes tables enclosed in {|...|}.
+    - Removes files and figures specified with [[File:...]] or [[Bestand:...]].
+    - Processes links of the form [[...|visible text]] to keep only the visible text.
+    - Removes links of the form [[...]].
+    - Removes URLs.
+    - Removes section headers and HTML tags.
+    - Removes unnecessary characters such as {, }, and |.
+    - Keeps only the text after the first title (indicated by ''' or ==).
+    - Removes extra whitespace and newlines.
+    - Splits the text into sentences and filters out short sentences.
+    - Concatenates the cleaned sentences into a single string.
+    - Unescapes HTML entities and removes non-breaking spaces.
+    """
     if not text:
         return ""
     
@@ -93,7 +124,13 @@ def clean_wikitext(text):
 
 
 def parse_xml(input_file):
-    """ """
+    """
+    Parses an XML file and returns a list of <page> elements.
+    Args:
+        input_file (str): The path to the XML file to be parsed.
+    Returns:
+        list: A list of <page> elements found in the XML file.
+    """
     tree = ET.parse(input_file)
     root = tree.getroot()
     

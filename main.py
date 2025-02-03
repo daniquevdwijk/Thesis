@@ -2,26 +2,36 @@
 # File name: main.py
 # Author: Danique van der Wijk
 # Student number: s3989771
-# Last updated: 10 January 2025
+# Last updated: 3 February 2025
 # Description: The main file of the thesis
 #
 
 import os
 import csv
-#from transformers import pipeline
 from preprocessing import extract_text, parse_xml
 from adjdel import bitcode_to_text_spacy, bitcode_to_text_stanza, adjective_labeling_spacy, adjective_labeling_stanza, find_matching_count, generate_bitcode_spacy, generate_bitcode_stanza
 from evaluation import calculate_bleu_score, perplexity, levenshtein_dist
-import xml.etree.ElementTree as ET  
-import pandas as pd
-import nltk
-
 
 
 def process_pages(input_file, output_file):
-    """ """
+    """
+    Processes pages from an XML input file and writes the extracted data to a CSV output file.
+    Args:
+        input_file (str): The path to the XML file containing the pages to be processed.
+        output_file (str): The path to the CSV file where the processed data will be saved.
+    Returns:
+        None
+    The function performs the following steps:
+    1. Parses the XML input file to extract page elements.
+    2. Prints the number of pages found.
+    3. Opens the CSV output file for writing.
+    4. Writes the column titles 'Title' and 'Content' to the CSV file.
+    5. Iterates through each page element, extracting the title and content.
+    6. Writes the extracted title and content to the CSV file.
+    7. Prints a message indicating that the processed data has been saved.
+    """
     pages = parse_xml(input_file)
-    print(f"Number of pages found: {len(pages)}") # deze kan ooit wel een keer weg
+    print(f"Number of pages found: {len(pages)}")
     namespace = {"ns": "http://www.mediawiki.org/xml/export-0.11/"}
 
     # open the csv-file to write in it
@@ -40,51 +50,26 @@ def process_pages(input_file, output_file):
     print(f"The processed data is saved in {output_file}")
 
 
-def split_into_sentences(input_file, output_file):
-    """ Splits the content column of the CSV into sentences. """
-    df = pd.read_csv(input_file, encoding='utf-8')
-
-    if 'Content' not in df.columns:
-        print("The input file must contain a 'Content' column.")
-        return
-    
-    df['Content'] = df['Content'].fillna("").astype(str) # replace NaN with empty string
-
-    all_sentences = []
-    for _, row in df.iterrows():
-        content = row['Content']
-
-        # Check if the content is a string
-        if not isinstance(content, str):
-            continue
-
-        sentences = nltk.tokenize.sent_tokenize(content, language='dutch')
-        for sentence in sentences:
-            all_sentences.append({'Sentence': sentence})
-    
-    # Save the sentences into a CSV file
-    sentences_df = pd.DataFrame(all_sentences)
-    sentences_df.to_csv(output_file, index=False, encoding='utf-8')
-    print(f"Sentences saved in {output_file}")
-
-
-def inspect_xml_structure(input_file):
-    """ """
-    tree = ET.parse(input_file)
-    root = tree.getroot()
-
-    print("Root tag:", root.tag)
-    #print("Child tags of root:")
-    #for child in root:
-        #print(" -", child.tag)
-
-
 def text_to_bitcode(input_text):
-    """ Convert input text to binary bitcode."""
+    """
+    Convert input text to binary bitcode.
+
+    Args:
+        input_text (str): The text to be converted to binary.
+
+    Returns:
+        str: A string representing the binary bitcode of the input text.
+    """
     return ''.join(format(ord(char), '08b') for char in input_text)
 
 def bitcode_transform(bitcode):
-    """ Convert binary bitcode to text. """
+    """
+    Convert binary bitcode to text.
+    Args:
+        bitcode (str): A string of binary digits (0s and 1s) representing the bitcode.
+    Returns:
+        str: The decoded text obtained by converting each 8-bit chunk of the bitcode to its corresponding character.
+    """
     # Split the bitcode into chunks of 8 bits (1 byte)
     byte_chunks = [bitcode[i:i + 8] for i in range(0, len(bitcode), 8)]
 
@@ -94,16 +79,33 @@ def bitcode_transform(bitcode):
     return text
 
 
-def debug_bitcode(original_bitcode, reconstructed_bitcode):
-    """" """
-    for i, (original_bit, reconstructed_bit) in enumerate(zip(original_bitcode, reconstructed_bitcode)):
-        if original_bit != reconstructed_bit:
-            print(f"Bit mismatch at position {i}: Original = {original_bit}, Reconstructed = {reconstructed_bit}")
-    
-    #assert original_bitcode == reconstructed_bitcode, "The original bitcode and the reconstructed bitcode are not the same."
-
 
 def evaluate_sentences(sentences, stanza_file, spacy_file):
+    """
+    Evaluates a list of sentences by encoding them into bitcodes and then embedding these bitcodes into cover texts
+    using both spaCy and Stanza methods. The function calculates various metrics for each sentence and returns the results.
+    Args:
+        sentences (list of str): List of sentences to be evaluated.
+        stanza_file (str): Path to the file containing cover texts for Stanza.
+        spacy_file (str): Path to the file containing cover texts for spaCy.
+    Returns:
+        list of dict: A list of dictionaries containing the evaluation results for each sentence. Each dictionary contains:
+            - "sentence" (str): The original sentence.
+            - "cover_text_spacy" (str): The cover text used for spaCy.
+            - "cover_text_stanza" (str): The cover text used for Stanza.
+            - "stego_text_spacy" (str): The stego text generated using spaCy.
+            - "stego_text_stanza" (str): The stego text generated using Stanza.
+            - "decoded_spacy" (str): The decoded bitcode from the stego text using spaCy.
+            - "decoded_stanza" (str): The decoded bitcode from the stego text using Stanza.
+            - "bleu_spacy" (float): The BLEU score for the spaCy stego text.
+            - "bleu_stanza" (float): The BLEU score for the Stanza stego text.
+            - "perplexity_spacy_cover" (float): The perplexity of the spaCy cover text.
+            - "perplexity_spacy_stego" (float): The perplexity of the spaCy stego text.
+            - "perplexity_stanza_cover" (float): The perplexity of the Stanza cover text.
+            - "perplexity_stanza_stego" (float): The perplexity of the Stanza stego text.
+            - "lev_dist_spacy" (int): The Levenshtein distance between the original sentence and the decoded bitcode using spaCy.
+            - "lev_dist_stanza" (int): The Levenshtein distance between the original sentence and the decoded bitcode using Stanza.
+    """
     """ """
     results = []
     for sentence in sentences:
@@ -163,7 +165,17 @@ def evaluate_sentences(sentences, stanza_file, spacy_file):
 
 
 def main():
-    """ """
+    """ 
+    Main function to process the Wikimedia data, extract the adjectives
+    and evaluate sample sentences.
+
+    Output:
+    - 'output.csv': processed Wikimedia data in a CSV file.
+    - 'count_spacy.csv': adjective labeling results using SpaCy.
+    - 'count_stanza.csv': adjective labeling results using Stanza.
+    - Console output with evaluation metrics for the sample sentences.
+    """
+
     input_file = os.path.join('data', 'nlwiki-20241220-pages-articles-multistream1.xml-p1p134538')
     output_file = 'output.csv'
     count_file_spacy = 'count_spacy.csv'
@@ -174,14 +186,17 @@ def main():
         process_pages(input_file, output_file)
         print("processing of pages done")
 
+    # Check if there is already a file with adjective count done by SpaCy
     if not os.path.exists(count_file_spacy):
         adjective_labeling_spacy(output_file, count_file_spacy)
         print("Adjective labeling done (spacy)")
     
+    # Check if there is already a file with adjective count done by Stanza
     if not os.path.exists(count_file_stanza):
         adjective_labeling_stanza(output_file, count_file_stanza)
         print("Adjective labeling done (stanza)")
 
+    # Test sentences
     sentences = [
         "De kat zit op de paal",
         "Mijn fiets is stuk",
@@ -215,31 +230,6 @@ def main():
         print(f"Levenshtein Distance (Stanza): {result['lev_dist_stanza']}")
         print("-" * 50) # For readability
 
-    #cover_text = find_matching_count(count_file_stanza, len(bitcode))
-    #if cover_text:
-        #print("Matching text found")
-        #print(cover_text)
-    #else:
-        #print("No matching text found")
-    
-    #stego_text = bitcode_to_text_spacy(cover_text[0], bitcode)
-    #stego_text = bitcode_to_text_stanza(cover_text[0], bitcode)
-    #print(f"This is the stego text: {stego_text}")
-
-    #cover_bitcode = generate_bitcode_spacy(cover_text[0], stego_text)
-    #cover_bitcode = generate_bitcode_stanza(cover_text[0], stego_text)
-    #print(f"This is the bitcode decoded from the stego text: {cover_bitcode}")
-
-    #debug_bitcode(bitcode, cover_bitcode)
-    #covered_text = bitcode_transform(cover_bitcode)
-    #print(f"This is the hidden text: {covered_text}")
-
-    #bleu_score = calculate_bleu_score(stego_text, cover_text[0])
-
-    #cover_ppl = perplexity(cover_text[0])
-    #print(f"Perplexity cover: {cover_ppl:.2f}")
-    #stego_ppl = perplexity(stego_text)
-    #print(f"Perplexity stego: {stego_ppl:.2f}")
 
 if __name__ == "__main__":
     main()
