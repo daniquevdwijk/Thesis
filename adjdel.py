@@ -122,17 +122,17 @@ def bitcode_to_text_spacy(text, bitcode):
     new_text = []
     bit_index = 0
 
-    print("Cover adjectives:", [token.text for token in doc if token.pos_ == "ADJ"])
+    #print("Cover adjectives:", [token.text for token in doc if token.pos_ == "ADJ"])
 
     for token in doc:
         if token.pos_ == "ADJ": # Only manipulate adjectives
             if bit_index < len(bitcode): # Check if there is a bit left
                 if bitcode[bit_index] == "1": 
                     new_text.append(token.text) # Add the adjective in the new text
-                    print(f"Bit: {bitcode[bit_index]}, Adjective added: {token.text}")
+                    #print(f"Bit: {bitcode[bit_index]}, Adjective added: {token.text}")
                 # Else: skip the adjective
-                else:
-                    print(f"Bit: {bitcode[bit_index]}, Adjective skipped: {token.text}")
+                #else:
+                    #print(f"Bit: {bitcode[bit_index]}, Adjective skipped: {token.text}")
                 bit_index += 1 # Go to the next bit
             # Else: skip the adjective
         else:
@@ -149,7 +149,7 @@ def bitcode_to_text_stanza(text, bitcode):
     new_text = []
     bit_index = 0
 
-    print("Cover adjectives:", [word.text for sent in doc.sentences for word in sent.words if word.upos == "ADJ"])
+    #print("Cover adjectives:", [word.text for sent in doc.sentences for word in sent.words if word.upos == "ADJ"])
 
     for sent in doc.sentences:
         for word in sent.words:
@@ -157,10 +157,10 @@ def bitcode_to_text_stanza(text, bitcode):
                 if bit_index < len(bitcode): # Check if there is a bit left
                     if bitcode[bit_index] == "1": 
                         new_text.append(word.text) # Add the adjective in the new text
-                        print(f"Bit: {bitcode[bit_index]}, Adjective added: {word.text}")
+                        #print(f"Bit: {bitcode[bit_index]}, Adjective added: {word.text}")
                     # Else: skip the adjective
-                    else:
-                        print(f"Bit: {bitcode[bit_index]}, Adjective skipped: {word.text}")
+                    #else:
+                        #print(f"Bit: {bitcode[bit_index]}, Adjective skipped: {word.text}")
                     bit_index += 1 # Go to the next bit
                 # Else: skip the adjective
             else:
@@ -176,22 +176,14 @@ def generate_bitcode_spacy(cover_text, stego_text):
     cover_doc = nlp_spacy(cover_text)
     stego_doc = nlp_spacy(stego_text)
 
-    # Print POS tags for cover and stego texts
-    print("Cover text POS tags:", [(token.text, token.pos_) for token in cover_doc])
-    print()
-    print("Stego text POS tags:", [(token.text, token.pos_) for token in stego_doc])
+    # Print POS tags for cover and stego texts (dit kan ooit ook wel weg)
+    #print("Cover text POS tags:", [(token.text, token.pos_) for token in cover_doc])
+    #print()
+    #print("Stego text POS tags:", [(token.text, token.pos_) for token in stego_doc])
 
     # List of all tokens in stego text
     cover_adj = [token.text for token in cover_doc if token.pos_ == "ADJ"]
     stego_adj = [token.text for token in stego_doc if token.pos_ == "ADJ"]
-
-    # Debugging:
-    #print("Cover text tokens:")
-    #for sent in cover_doc.sentences:
-        #print([(word.text, word.upos) for word in sent.words])
-    #print("Stego text tokens:")
-    #for sent in stego_doc.sentences:
-        #print([(word.text, word.upos) for word in sent.words])
     
     bitcode = []
     stego_index = 0
@@ -212,10 +204,6 @@ def generate_bitcode_spacy(cover_text, stego_text):
     #Debugging:
     if len(bitcode) != len(cover_adj):
         print("Bitcode length does not match the number of adjectives in the cover")
-    
-    #print("Cover adjectives:", cover_adj)
-    #print("Stego adjectives:", stego_adj)
-    #print("Cover bitcode:", bitcode)
 
     return "".join(bitcode)
 
@@ -224,9 +212,9 @@ def generate_bitcode_stanza(cover_text, stego_text):
     cover_doc = nlp_stanza(cover_text)
     stego_doc = nlp_stanza(stego_text)
 
-    print("Cover text POS tags:", [(word.text, word.upos) for sent in cover_doc.sentences for word in sent.words])
-    print()
-    print("Stego text POS tags:", [(word.text, word.upos) for sent in stego_doc.sentences for word in sent.words])
+    #print("Cover text POS tags:", [(word.text, word.upos) for sent in cover_doc.sentences for word in sent.words])
+    #print()
+    #print("Stego text POS tags:", [(word.text, word.upos) for sent in stego_doc.sentences for word in sent.words])
 
     # List of all tokens in stego text
     cover_adj = [word.text for sent in cover_doc.sentences for word in sent.words if word.upos == "ADJ"]
@@ -251,9 +239,5 @@ def generate_bitcode_stanza(cover_text, stego_text):
     #Debugging:
     if len(bitcode) != len(cover_adj):
         print("Bitcode length does not match the number of adjectives in the cover")
-    
-    #print("Cover adjectives:", cover_adj)
-    #print("Stego adjectives:", stego_adj)
-    #print("Cover bitcode:", bitcode)
 
     return "".join(bitcode)

@@ -8,18 +8,14 @@
 
 import os
 import csv
-from transformers import pipeline
+#from transformers import pipeline
 from preprocessing import extract_text, parse_xml
 from adjdel import bitcode_to_text_spacy, bitcode_to_text_stanza, adjective_labeling_spacy, adjective_labeling_stanza, find_matching_count, generate_bitcode_spacy, generate_bitcode_stanza
-#from labelling import label_sentences
-from evaluation import train_svm, calculate_bleu_score
-import xml.etree.ElementTree as ET
+from evaluation import calculate_bleu_score, perplexity, levenshtein_dist
+import xml.etree.ElementTree as ET  
 import pandas as pd
 import nltk
 
-#Download NLTK tokenizer (only needed 1 time)
-#nltk.download('punkt')
-#nltk.download('punkt_tab')
 
 
 def process_pages(input_file, output_file):
@@ -107,18 +103,71 @@ def debug_bitcode(original_bitcode, reconstructed_bitcode):
     #assert original_bitcode == reconstructed_bitcode, "The original bitcode and the reconstructed bitcode are not the same."
 
 
+def evaluate_sentences(sentences, stanza_file, spacy_file):
+    """ """
+    results = []
+    for sentence in sentences:
+        bitcode = text_to_bitcode(sentence)
+        print()
+        print(sentence)
+
+        # SpaCy
+        # Find a fitting covertext
+        cover_text_spacy = find_matching_count(spacy_file, len(bitcode))
+        if not cover_text_spacy:
+            print(f"No matching text found for: {sentence} (spaCy)")
+            continue
+        cover_text_spacy = cover_text_spacy[0]
+        stego_text_spacy = bitcode_to_text_spacy(cover_text_spacy, bitcode)
+        stego_bitcode_spacy = generate_bitcode_spacy(cover_text_spacy, stego_text_spacy)
+        covered_bitcode_spacy = bitcode_transform(stego_bitcode_spacy)
+        bleu_spacy = calculate_bleu_score(stego_text_spacy, cover_text_spacy, (0.25,0.25,0.25,0.25))
+        perp_cover_spacy = perplexity(cover_text_spacy)
+        perp_stego_spacy = perplexity(stego_text_spacy)
+        lev_dist_spacy = levenshtein_dist(sentence, covered_bitcode_spacy)
+
+        # Stanza
+        # Find a fitting covertext
+        cover_text_stanza = find_matching_count(stanza_file, len(bitcode))
+        if not cover_text_stanza:
+            print(f"No matching text found for: {sentence} (Stanza)")
+            continue
+        cover_text_stanza = cover_text_stanza[0]
+        stego_text_stanza = bitcode_to_text_stanza(cover_text_stanza, bitcode)
+        stego_bitcode_stanza = generate_bitcode_stanza(cover_text_stanza, stego_text_stanza)
+        covered_bitcode_stanza = bitcode_transform(stego_bitcode_stanza)
+        bleu_stanza = calculate_bleu_score(stego_text_stanza, cover_text_stanza, (0.25,0.25,0.25,0.25))
+        perp_cover_stanza = perplexity(cover_text_stanza)
+        perp_stego_stanza = perplexity(stego_text_stanza)
+        lev_dist_stanza = levenshtein_dist(sentence, covered_bitcode_stanza)
+
+        results.append({
+            "sentence": sentence,
+            "cover_text_spacy": cover_text_spacy,
+            "cover_text_stanza": cover_text_stanza,
+            "stego_text_spacy": stego_text_spacy,
+            "stego_text_stanza": stego_text_stanza,
+            "decoded_spacy": covered_bitcode_spacy,
+            "decoded_stanza": covered_bitcode_stanza,
+            "bleu_spacy": bleu_spacy,
+            "bleu_stanza": bleu_stanza,
+            "perplexity_spacy_cover": perp_cover_spacy,
+            "perplexity_spacy_stego": perp_stego_spacy,
+            "perplexity_stanza_cover": perp_cover_stanza,
+            "perplexity_stanza_stego": perp_stego_stanza,
+            "lev_dist_spacy": lev_dist_spacy,
+            "lev_dist_stanza": lev_dist_stanza
+        })
+
+    return results    
+
+
 def main():
     """ """
     input_file = os.path.join('data', 'nlwiki-20241220-pages-articles-multistream1.xml-p1p134538')
     output_file = 'output.csv'
     count_file_spacy = 'count_spacy.csv'
     count_file_stanza = 'count_stanza.csv'
-
-    input_text = "Test Test Test"
-    print(f"Original text: {input_text}")
-    bitcode = text_to_bitcode(input_text)
-    print(f"Original bitcode: {bitcode}")
-    #print(f"The lenght of the bitcode is: {len(bitcode)} bits")
 
     # Check if the original XML file is already converted into a csv file
     if not os.path.exists(output_file):
@@ -133,36 +182,64 @@ def main():
         adjective_labeling_stanza(output_file, count_file_stanza)
         print("Adjective labeling done (stanza)")
 
-    cover_text = find_matching_count(count_file_spacy, len(bitcode))
-    if cover_text:
-        print("Matching text found")
-        print(cover_text)
-    else:
-        print("No matching text found")
+    sentences = [
+        "De kat zit op de paal",
+        "Mijn fiets is stuk",
+        "Het is mooi weer",
+        "Ik drink koffie",
+        "De zon is fel",
+        "Het huis heeft een deur",
+        "We gaan naar de kroeg",
+        "Mijn hond blaft",
+        "De mok staat op tafel",
+        "Ik houd van thee"
+    ]
+
+    results = evaluate_sentences(sentences,count_file_stanza, count_file_spacy)
+
+    for result in results:
+        print(f"Original sentence: {result['sentence']}")
+        #print(f"Selected Cover text with spaCy: {result['cover_text_spacy']}")
+        #print(f"Selected Cover text with Stanza: {result['cover_text_stanza']}")
+        #print(f"Stego text with spaCy: {result['stego_text_spacy']}")
+        #print(f"Stego text with Stanza: {result['stego_text_stanza']}")
+        print(f"Decoded message (spaCy): {result['decoded_spacy']}")
+        print(f"Decoded message (Stanza): {result['decoded_stanza']}")
+        print(f"BLEU score (spaCy): {result['bleu_spacy']:.4f}")
+        print(f"BLEU score (Stanza) {result['bleu_stanza']:.4f}")
+        print(f"Perplexity Score Cover (spaCy): {result['perplexity_spacy_cover']:.2f}")
+        print(f"Perplexity Score Stego (spaCy): {result['perplexity_spacy_stego']:.2f}")
+        print(f"Perplexity Score Cover (Stanza): {result['perplexity_stanza_cover']:.2f}")
+        print(f"Perplexity Score Stego (Stanza): {result['perplexity_stanza_stego']:.2f}")
+        print(f"Levenshtein Distance (spaCy): {result['lev_dist_spacy']}")
+        print(f"Levenshtein Distance (Stanza): {result['lev_dist_stanza']}")
+        print("-" * 50) # For readability
+
+    #cover_text = find_matching_count(count_file_stanza, len(bitcode))
+    #if cover_text:
+        #print("Matching text found")
+        #print(cover_text)
+    #else:
+        #print("No matching text found")
     
-    stego_text = bitcode_to_text_spacy(cover_text[0], bitcode)
+    #stego_text = bitcode_to_text_spacy(cover_text[0], bitcode)
     #stego_text = bitcode_to_text_stanza(cover_text[0], bitcode)
-    print(f"This is the stego text: {stego_text}")
+    #print(f"This is the stego text: {stego_text}")
 
-    cover_bitcode = generate_bitcode_spacy(cover_text[0], stego_text)
+    #cover_bitcode = generate_bitcode_spacy(cover_text[0], stego_text)
     #cover_bitcode = generate_bitcode_stanza(cover_text[0], stego_text)
-    print(f"This is the bitcode decoded from the stego text: {cover_bitcode}")
-    #assert bitcode == cover_bitcode, "The original bitcode and the stego bitcode are not the same."
+    #print(f"This is the bitcode decoded from the stego text: {cover_bitcode}")
 
-    debug_bitcode(bitcode, cover_bitcode)
-    covered_text = bitcode_transform(cover_bitcode)
-    print(f"This is the hidden text: {covered_text}")
+    #debug_bitcode(bitcode, cover_bitcode)
+    #covered_text = bitcode_transform(cover_bitcode)
+    #print(f"This is the hidden text: {covered_text}")
 
-    #assert input_text == covered_text, "The original text and the hidden text are not the same."
+    #bleu_score = calculate_bleu_score(stego_text, cover_text[0])
 
-
-    # die dingen moet ik nog labels geven voordat ik de SVM kan doen
-
-    #model, accuracy = train_svm(labeled_file)
-    #print(f"SVM model is trained with an accuracy of {accuracy * 100:.2f}%")
-
-    bleu_score = calculate_bleu_score(stego_text, cover_text[0])
-    
+    #cover_ppl = perplexity(cover_text[0])
+    #print(f"Perplexity cover: {cover_ppl:.2f}")
+    #stego_ppl = perplexity(stego_text)
+    #print(f"Perplexity stego: {stego_ppl:.2f}")
 
 if __name__ == "__main__":
     main()
