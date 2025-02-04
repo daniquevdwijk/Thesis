@@ -106,7 +106,6 @@ def evaluate_sentences(sentences, stanza_file, spacy_file):
             - "lev_dist_spacy" (int): The Levenshtein distance between the original sentence and the decoded bitcode using spaCy.
             - "lev_dist_stanza" (int): The Levenshtein distance between the original sentence and the decoded bitcode using Stanza.
     """
-    """ """
     results = []
     for sentence in sentences:
         bitcode = text_to_bitcode(sentence)
@@ -184,17 +183,31 @@ def main():
     # Check if the original XML file is already converted into a csv file
     if not os.path.exists(output_file):
         process_pages(input_file, output_file)
-        print("processing of pages done")
+        print("Processing of pages done")
 
     # Check if there is already a file with adjective count done by SpaCy
     if not os.path.exists(count_file_spacy):
         adjective_labeling_spacy(output_file, count_file_spacy)
         print("Adjective labeling done (spacy)")
-    
+
     # Check if there is already a file with adjective count done by Stanza
     if not os.path.exists(count_file_stanza):
         adjective_labeling_stanza(output_file, count_file_stanza)
         print("Adjective labeling done (stanza)")
+
+    # Function to count adjectives from a CSV file
+    def count_adjectives(file_path):
+        with open(file_path, mode='r', encoding='utf-8') as csv_file:
+            reader = csv.DictReader(csv_file)
+            return sum(int(row['Adjective_Count']) for row in reader)
+
+    # Print the number of adjectives found by SpaCy
+    total_adjectives_spacy = count_adjectives(count_file_spacy)
+    print(f"Total adjectives found by SpaCy: {total_adjectives_spacy}")
+
+    # Print the number of adjectives found by Stanza
+    total_adjectives_stanza = count_adjectives(count_file_stanza)
+    print(f"Total adjectives found by Stanza: {total_adjectives_stanza}")
 
     # Test sentences
     sentences = [
@@ -210,8 +223,10 @@ def main():
         "Ik houd van thee"
     ]
 
+    # Generate results
     results = evaluate_sentences(sentences,count_file_stanza, count_file_spacy)
 
+    # Print results
     for result in results:
         print(f"Original sentence: {result['sentence']}")
         #print(f"Selected Cover text with spaCy: {result['cover_text_spacy']}")

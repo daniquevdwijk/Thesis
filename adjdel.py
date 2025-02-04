@@ -82,11 +82,11 @@ def adjective_labeling_spacy(input_csv, output_csv):
     
     # Calculate the total number of adjectives
     total_adjectives = df['Adjective_Count'].sum()
-    print(f"Total number of adjectives: {total_adjectives}")
+    #print(f"Total number of adjectives: {total_adjectives}")
 
     # Save the DataFrame to a CSV file
     df.to_csv(output_csv, index=False)
-    print(f"Adjectives saved to '{output_csv}'")
+    print(f"Adjectives count saved to '{output_csv}'")
 
     return
 
